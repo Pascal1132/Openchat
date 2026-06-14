@@ -2,44 +2,51 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
 import '../../domain/models/message.dart';
+import '../themes/colors.dart';
+import '../themes/typography.dart';
+import 'common/icon_button_custom.dart';
 
 class MessageBubble extends StatelessWidget {
   const MessageBubble({
     required this.message,
     this.onRegenerate,
     this.onEdit,
+    this.onCopy,
     super.key,
   });
 
   final Message message;
   final VoidCallback? onRegenerate;
   final VoidCallback? onEdit;
+  final VoidCallback? onCopy;
 
   bool get _isUser => message.role == MessageRole.user;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: _isUser
-          ? Theme.of(context).colorScheme.surface
-          : Theme.of(context).scaffoldBackgroundColor,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      color: _isUser ? AppColors.background : AppColors.surface,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildAvatar(context),
+          _Avatar(isUser: _isUser, isStreaming: message.isStreaming),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSenderLabel(context),
+                _buildHeader(context),
                 const SizedBox(height: 6),
-                _buildContent(context),
-                if (message.isStreaming) _buildTypingIndicator(),
-                if (_isUser) _buildUserActions(context),
-                if (message.role == MessageRole.assistant && !message.isStreaming)
-                  _buildAssistantActions(context),
+                _Content(message: message),
+                if (message.isStreaming) _StreamingCursor(),
+                const SizedBox(height: 10),
+                _Actions(
+                  isUser: _isUser,
+                  onEdit: onEdit,
+                  onRegenerate: onRegenerate,
+                  onCopy: onCopy,
+                ),
               ],
             ),
           ),
@@ -48,36 +55,124 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildAvatar(BuildContext context) {
-    final icon = _isUser ? Icons.person : Icons.auto_awesome;
-    final background = _isUser
-        ? Theme.of(context).colorScheme.primary
-        : Theme.of(context).colorScheme.tertiaryContainer;
-    final foreground = _isUser
-        ? Theme.of(context).colorScheme.onPrimary
-        : Theme.of(context).colorScheme.onTertiaryContainer;
-    return CircleAvatar(
-      radius: 16,
-      backgroundColor: background,
-      child: Icon(icon, size: 18, color: foreground),
-    );
-  }
-
-  Widget _buildSenderLabel(BuildContext context) {
-    final label = _isUser ? 'You' : 'Assistant';
-    return Text(
-      label,
-      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+  Widget _buildHeader(BuildContext context) {
+    return Row(
+      children: [
+        Text(
+          _isUser ? 'You' : 'OpenChat',
+          style: AppTypography.label.copyWith(
+            color: AppColors.textSecondary,
             fontWeight: FontWeight.w600,
           ),
+        ),
+        if (message.isStreaming) ...[
+          const SizedBox(width: 8),
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: AppColors.accent,
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+        ],
+      ],
     );
   }
+}
 
-  Widget _buildContent(BuildContext context) {
-    if (_isUser) {
-      return SelectableText(
-        message.content,
-        style: Theme.of(context).textTheme.bodyLarge,
+class _Avatar extends StatelessWidget {
+  const _Avatar({required this.isUser, this.isStreaming});
+
+  final bool isUser;
+  final bool? isStreaming;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 32,
+      height: 32,
+      decoration: BoxDecoration(
+        gradient: isUser
+            ? const LinearGradient(
+                colors: [AppColors.primary, AppColors.primaryMuted],
+              )
+            : const LinearGradient(
+                colors: [AppColors.accent, Color(0xFF4DFFEA)],
+              ),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Center(
+        child: isUser
+            ? const Icon(Icons.person, size: 18, color: Colors.white)
+            : const _SparkleIcon(),
+      ),
+    );
+  }
+}
+
+class _SparkleIcon extends StatefulWidget {
+  const _SparkleIcon();
+
+  @override
+  State<_SparkleIcon> createState() => _SparkleIconState();
+}
+
+class _SparkleIconState extends State<_SparkleIcon>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Transform.rotate(
+          angle: _controller.value * 0.2 - 0.1,
+          child: const Icon(
+            Icons.auto_awesome,
+            size: 18,
+            color: AppColors.background,
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _Content extends StatelessWidget {
+  const _Content({required this.message});
+
+  final Message message;
+
+  @override
+  Widget build(BuildContext context) {
+    if (message.role == MessageRole.user) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.userBubble,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Text(
+          message.content,
+          style: AppTypography.body.copyWith(color: Colors.white),
+        ),
       );
     }
 
@@ -85,50 +180,121 @@ class MessageBubble extends StatelessWidget {
       data: message.content,
       selectable: true,
       styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-        codeblockDecoration: const BoxDecoration(
-          color: Colors.transparent,
+        p: AppTypography.body,
+        h1: AppTypography.display.copyWith(fontSize: 24),
+        h2: AppTypography.title.copyWith(fontSize: 20),
+        h3: AppTypography.title.copyWith(fontSize: 18),
+        code: AppTypography.code.copyWith(
+          backgroundColor: AppColors.codeBlock,
         ),
-        code: TextStyle(
-          fontFamily: 'monospace',
-          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+        codeblockDecoration: BoxDecoration(
+          color: AppColors.codeBlock,
+          borderRadius: BorderRadius.circular(14),
         ),
+        blockquote: AppTypography.body.copyWith(
+          color: AppColors.textSecondary,
+        ),
+        blockquoteDecoration: const BoxDecoration(
+          border: Border(
+            left: BorderSide(color: AppColors.primary, width: 3),
+          ),
+        ),
+        listBullet: AppTypography.body,
+        tableHead: AppTypography.body.copyWith(fontWeight: FontWeight.w700),
+        tableBody: AppTypography.body,
+        tableBorder: TableBorder.all(color: AppColors.border, width: 1),
+        tableCellsPadding: const EdgeInsets.all(8),
       ),
-    );
-  }
-
-  Widget _buildTypingIndicator() {
-    return const Padding(
-      padding: EdgeInsets.only(top: 8),
-      child: SizedBox(
-        width: 12,
-        height: 12,
-        child: CircularProgressIndicator(strokeWidth: 2),
-      ),
-    );
-  }
-
-  Widget _buildUserActions(BuildContext context) {
-    return Row(
-      children: [
-        IconButton(
-          icon: const Icon(Icons.edit, size: 16),
-          onPressed: onEdit,
-          tooltip: 'Edit message',
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAssistantActions(BuildContext context) {
-    return Row(
-      children: [
-        IconButton(
-          icon: const Icon(Icons.refresh, size: 16),
-          onPressed: onRegenerate,
-          tooltip: 'Regenerate response',
-        ),
-      ],
     );
   }
 }
 
+class _StreamingCursor extends StatefulWidget {
+  @override
+  State<_StreamingCursor> createState() => _StreamingCursorState();
+}
+
+class _StreamingCursorState extends State<_StreamingCursor>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Opacity(
+          opacity: _controller.value,
+          child: Container(
+            margin: const EdgeInsets.only(top: 6),
+            width: 8,
+            height: 16,
+            decoration: BoxDecoration(
+              color: AppColors.accent,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _Actions extends StatelessWidget {
+  const _Actions({
+    required this.isUser,
+    this.onEdit,
+    this.onRegenerate,
+    this.onCopy,
+  });
+
+  final bool isUser;
+  final VoidCallback? onEdit;
+  final VoidCallback? onRegenerate;
+  final VoidCallback? onCopy;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        if (onCopy != null)
+          IconButtonCustom(
+            icon: Icons.copy,
+            onTap: onCopy,
+            tooltip: 'Copy',
+          ),
+        if (!isUser && onRegenerate != null) ...[
+          const SizedBox(width: 6),
+          IconButtonCustom(
+            icon: Icons.refresh,
+            onTap: onRegenerate,
+            tooltip: 'Regenerate',
+          ),
+        ],
+        if (isUser && onEdit != null) ...[
+          const SizedBox(width: 6),
+          IconButtonCustom(
+            icon: Icons.edit,
+            onTap: onEdit,
+            tooltip: 'Edit',
+          ),
+        ],
+      ],
+    );
+  }
+}

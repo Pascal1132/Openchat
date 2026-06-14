@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/models/artifact.dart';
+import '../../presentation/themes/colors.dart';
+import '../../presentation/themes/typography.dart';
 import '../artifact_types.dart';
 import '../renderers/code_artifact_renderer.dart';
 import '../renderers/document_artifact_renderer.dart';
@@ -9,7 +11,7 @@ import '../renderers/json_artifact_renderer.dart';
 import '../renderers/markdown_artifact_renderer.dart';
 import '../renderers/table_artifact_renderer.dart';
 
-class ArtifactPanel extends StatelessWidget {
+class ArtifactPanel extends StatefulWidget {
   const ArtifactPanel({
     required this.artifacts,
     this.selectedArtifactId,
@@ -24,58 +26,110 @@ class ArtifactPanel extends StatelessWidget {
   final ValueChanged<Artifact>? onArtifactDeleted;
 
   @override
+  State<ArtifactPanel> createState() => _ArtifactPanelState();
+}
+
+class _ArtifactPanelState extends State<ArtifactPanel> {
+  late String? _selectedId;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedId = widget.selectedArtifactId;
+  }
+
+  @override
+  void didUpdateWidget(covariant ArtifactPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.artifacts != oldWidget.artifacts && widget.artifacts.isNotEmpty) {
+      _selectedId ??= widget.artifacts.first.id;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (artifacts.isEmpty) {
-      return const Center(
+    if (widget.artifacts.isEmpty) {
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.auto_awesome_mosaic_outlined, size: 40),
-            SizedBox(height: 8),
-            Text('No artifacts yet'),
+            const Icon(
+              Icons.auto_awesome_mosaic,
+              size: 40,
+              color: AppColors.textTertiary,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No artifacts',
+              style: AppTypography.bodySmall,
+            ),
           ],
         ),
       );
     }
 
-    final selected = artifacts.firstWhere(
-      (a) => a.id == selectedArtifactId,
-      orElse: () => artifacts.first,
+    final selected = widget.artifacts.firstWhere(
+      (a) => a.id == _selectedId,
+      orElse: () => widget.artifacts.first,
     );
 
     return Column(
       children: [
-        _buildArtifactList(context, selected),
-        const Divider(height: 1),
+        _buildArtifactList(selected),
+        const Divider(height: 1, color: AppColors.border),
         Expanded(
           child: _ArtifactDetail(
             artifact: selected,
-            onDelete: onArtifactDeleted,
+            onDelete: widget.onArtifactDeleted,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildArtifactList(BuildContext context, Artifact selected) {
+  Widget _buildArtifactList(Artifact selected) {
     return Container(
-      height: 48,
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      height: 52,
+      color: AppColors.surfaceRaised,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        itemCount: artifacts.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        itemCount: widget.artifacts.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 6),
         itemBuilder: (context, index) {
-          final artifact = artifacts[index];
+          final artifact = widget.artifacts[index];
           final isSelected = artifact.id == selected.id;
-          return ChoiceChip(
-            label: Text(artifact.title),
-            selected: isSelected,
-            onSelected: (_) => onArtifactSelected?.call(artifact),
-            avatar: Icon(
-              _iconFor(artifact.type),
-              size: 16,
+          return GestureDetector(
+            onTap: () {
+              setState(() => _selectedId = artifact.id);
+              widget.onArtifactSelected?.call(artifact);
+            },
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: isSelected ? AppColors.primary : AppColors.surfaceOverlay,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isSelected ? AppColors.primary : AppColors.border,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _iconFor(artifact.type),
+                    size: 14,
+                    color: isSelected ? Colors.white : AppColors.textSecondary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    artifact.title,
+                    style: AppTypography.label.copyWith(
+                      color: isSelected ? Colors.white : AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -112,29 +166,43 @@ class _ArtifactDetail extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(14),
           child: Row(
             children: [
               Expanded(
                 child: Text(
                   artifact.title,
-                  style: Theme.of(context).textTheme.titleMedium,
+                  style: AppTypography.title.copyWith(fontSize: 15),
                 ),
               ),
-              Text(
-                artifact.type.label,
-                style: Theme.of(context).textTheme.labelSmall,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceOverlay,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Text(
+                  artifact.type.label,
+                  style: AppTypography.label.copyWith(fontSize: 10),
+                ),
               ),
               if (onDelete != null)
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, size: 18),
-                  onPressed: () => onDelete?.call(artifact),
-                  tooltip: 'Delete artifact',
+                GestureDetector(
+                  onTap: () => onDelete?.call(artifact),
+                  child: const Padding(
+                    padding: EdgeInsets.only(left: 8),
+                    child: Icon(
+                      Icons.delete_outline,
+                      size: 18,
+                      color: AppColors.error,
+                    ),
+                  ),
                 ),
             ],
           ),
         ),
-        const Divider(height: 1),
+        const Divider(height: 1, color: AppColors.border),
         Expanded(child: _rendererFor(artifact)),
       ],
     );

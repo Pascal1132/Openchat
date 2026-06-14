@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/atom-one-dark.dart';
-import 'package:flutter_highlight/themes/github.dart';
+
+import '../themes/colors.dart';
+import '../themes/typography.dart';
 
 class CodeBlock extends StatelessWidget {
   const CodeBlock({
@@ -23,17 +25,14 @@ class CodeBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final theme = isDark ? atomOneDarkTheme : githubTheme;
+    final theme = atomOneDarkTheme;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
-        ),
+        color: AppColors.codeBlock,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -47,7 +46,7 @@ class CodeBlock extends StatelessWidget {
               language: _effectiveLanguage,
               theme: theme,
               padding: const EdgeInsets.all(16),
-              textStyle: const TextStyle(fontFamily: 'monospace', fontSize: 13),
+              textStyle: AppTypography.code,
             ),
           ),
         ],
@@ -58,28 +57,41 @@ class CodeBlock extends StatelessWidget {
   Widget _buildHeader(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: const BoxDecoration(
+        color: AppColors.surfaceRaised,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       child: Row(
         children: [
           Text(
             language?.toUpperCase() ?? 'CODE',
-            style: Theme.of(context).textTheme.labelSmall,
+            style: AppTypography.label.copyWith(color: AppColors.textTertiary),
           ),
           const Spacer(),
-          InkWell(
+          GestureDetector(
             onTap: () async {
               await Clipboard.setData(ClipboardData(text: code));
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Code copied')),
+                  SnackBar(
+                    backgroundColor: AppColors.surfaceRaised,
+                    content: Text(
+                      'Code copied',
+                      style: AppTypography.bodySmall,
+                    ),
+                  ),
                 );
               }
             },
-            child: const Icon(Icons.copy, size: 16),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.copy, size: 14, color: AppColors.textSecondary),
+                const SizedBox(width: 6),
+                Text('Copy', style: AppTypography.label),
+              ],
+            ),
           ),
         ],
       ),

@@ -2,103 +2,32 @@ import 'package:flutter/material.dart';
 
 import 'colors.dart';
 
-/// Application theme definitions.
+/// Custom OpenChat theme.
+///
+/// Avoids Material visual components by exposing a raw palette and minimal
+/// ThemeData overrides. Build widgets against AppColors directly for a
+/// consistent dark/fun look.
 abstract final class AppTheme {
-  static ThemeData get lightTheme {
-    final base = ThemeData.light(useMaterial3: true);
-    return base.copyWith(
-      colorScheme: base.colorScheme.copyWith(
-        primary: AppColors.brand,
-        onPrimary: Colors.white,
-        surface: AppColors.lightSurface,
-        onSurface: AppColors.lightText,
-        surfaceContainerHighest: AppColors.lightSidebar,
-        outline: AppColors.lightBorder,
-        secondary: AppColors.lightSecondaryText,
-      ),
-      scaffoldBackgroundColor: AppColors.lightBackground,
-      appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.lightSurface,
-        foregroundColor: AppColors.lightText,
-        elevation: 0,
-        centerTitle: false,
-        titleTextStyle: base.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: AppColors.lightText,
-            ),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: AppColors.lightSurface,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      ),
-      cardTheme: CardThemeData(
-        color: AppColors.lightSurface,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-      dividerTheme: const DividerThemeData(
-        color: AppColors.lightBorder,
-      ),
-      textTheme: base.textTheme.apply(
-        bodyColor: AppColors.lightText,
-        displayColor: AppColors.lightText,
-      ),
-    );
-  }
+  static ThemeData get lightTheme => _buildTheme(Brightness.light);
+  static ThemeData get darkTheme => _buildTheme(Brightness.dark);
 
-  static ThemeData get darkTheme {
-    final base = ThemeData.dark(useMaterial3: true);
-    return base.copyWith(
-      colorScheme: base.colorScheme.copyWith(
-        primary: AppColors.brand,
-        onPrimary: Colors.white,
-        surface: AppColors.darkSurface,
-        onSurface: AppColors.darkText,
-        surfaceContainerHighest: AppColors.darkSidebar,
-        outline: AppColors.darkBorder,
-        secondary: AppColors.darkSecondaryText,
-      ),
-      scaffoldBackgroundColor: AppColors.darkBackground,
-      appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.darkSurface,
-        foregroundColor: AppColors.darkText,
+  static ThemeData _buildTheme(Brightness brightness) {
+    return ThemeData(
+      useMaterial3: true,
+      brightness: brightness,
+      scaffoldBackgroundColor: AppColors.background,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.textPrimary,
         elevation: 0,
         centerTitle: false,
-        titleTextStyle: base.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: AppColors.darkText,
-            ),
       ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: AppColors.darkBackground,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.darkBorder),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      textSelectionTheme: const TextSelectionThemeData(
+        cursorColor: AppColors.primary,
+        selectionColor: AppColors.primaryMuted,
+        selectionHandleColor: AppColors.primary,
       ),
-      cardTheme: CardThemeData(
-        color: AppColors.darkSurface,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-      dividerTheme: const DividerThemeData(
-        color: AppColors.darkBorder,
-      ),
-      textTheme: base.textTheme.apply(
-        bodyColor: AppColors.darkText,
-        displayColor: AppColors.darkText,
-      ),
+      fontFamily: 'Inter',
     );
   }
 }

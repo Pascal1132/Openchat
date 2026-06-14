@@ -4,12 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../domain/models/artifact.dart';
+import '../../presentation/themes/colors.dart';
+import '../../presentation/themes/typography.dart';
 
 class JsonArtifactRenderer extends StatelessWidget {
-  const JsonArtifactRenderer({
-    required this.artifact,
-    super.key,
-  });
+  const JsonArtifactRenderer({required this.artifact, super.key});
 
   final Artifact artifact;
 
@@ -32,10 +31,10 @@ class JsonArtifactRenderer extends StatelessWidget {
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
-            color: Theme.of(context).colorScheme.surface,
+            color: AppColors.surface,
             child: SelectableText(
               _pretty,
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
+              style: AppTypography.code,
             ),
           ),
         ),
@@ -45,23 +44,35 @@ class JsonArtifactRenderer extends StatelessWidget {
 
   Widget _buildToolbar(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      color: AppColors.surfaceRaised,
       child: Row(
         children: [
-          Icon(Icons.data_object, size: 16, color: Theme.of(context).colorScheme.primary),
+          const Icon(Icons.data_object, size: 16, color: AppColors.primary),
           const Spacer(),
-          TextButton.icon(
-            onPressed: () async {
+          GestureDetector(
+            onTap: () async {
               await Clipboard.setData(ClipboardData(text: _pretty));
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('JSON copied')),
+                  SnackBar(
+                    backgroundColor: AppColors.surfaceRaised,
+                    content: Text(
+                      'JSON copied',
+                      style: AppTypography.bodySmall,
+                    ),
+                  ),
                 );
               }
             },
-            icon: const Icon(Icons.copy, size: 16),
-            label: const Text('Copy'),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.copy, size: 14, color: AppColors.textSecondary),
+                const SizedBox(width: 6),
+                Text('Copy', style: AppTypography.label),
+              ],
+            ),
           ),
         ],
       ),

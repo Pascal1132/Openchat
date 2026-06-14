@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../domain/models/conversation.dart';
 import '../providers/core_providers.dart';
+import '../themes/colors.dart';
+import '../themes/typography.dart';
+import 'common/icon_button_custom.dart';
 import 'conversation_tile.dart';
 import 'responsive_layout.dart';
 
@@ -21,119 +24,182 @@ class AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final conversationsAsync = ref.watch(conversationsProvider);
     final isDesktopLayout = isDesktop(context);
-    final sidebarWidth = isDesktopLayout ? 280.0 : 0.0;
 
     return Scaffold(
-      appBar: isDesktopLayout
-          ? null
-          : AppBar(
-              title: const Text('OpenChat'),
-              centerTitle: false,
-            ),
-      drawer: isDesktopLayout
-          ? null
-          : _buildSidebarDrawer(context, ref, conversationsAsync),
       body: Row(
         children: [
           if (isDesktopLayout)
             SizedBox(
-              width: sidebarWidth,
-              child: _buildSidebarContent(context, ref, conversationsAsync),
+              width: 280,
+              child: _Sidebar(
+                selectedConversationId: selectedConversationId,
+                conversationsAsync: conversationsAsync,
+              ),
             ),
           Expanded(child: body),
         ],
       ),
+      drawer: isDesktopLayout
+          ? null
+          : Drawer(
+              backgroundColor: AppColors.surface,
+              child: _Sidebar(
+                selectedConversationId: selectedConversationId,
+                conversationsAsync: conversationsAsync,
+              ),
+            ),
     );
   }
+}
 
-  Widget _buildSidebarDrawer(
-    BuildContext context,
-    WidgetRef ref,
-    AsyncValue<List<Conversation>> conversationsAsync,
-  ) {
-    return Drawer(
-      child: _buildSidebarContent(context, ref, conversationsAsync),
-    );
-  }
+class _Sidebar extends ConsumerWidget {
+  const _Sidebar({
+    required this.selectedConversationId,
+    required this.conversationsAsync,
+  });
 
-  Widget _buildSidebarContent(
-    BuildContext context,
-    WidgetRef ref,
-    AsyncValue<List<Conversation>> conversationsAsync,
-  ) {
+  final String? selectedConversationId;
+  final AsyncValue<List<Conversation>> conversationsAsync;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     return Container(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      color: AppColors.surface,
       child: Column(
         children: [
-          _buildNewChatButton(context, ref),
-          _buildSearchField(context, ref),
+          _buildHeader(context, ref),
+          _buildSearch(context, ref),
           Expanded(
             child: conversationsAsync.when(
-              data: (conversations) => _buildConversationList(context, ref, conversations),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (Object error, StackTrace stackTrace) => const Center(child: Text('Unable to load conversations')),
+              data: (conversations) => _buildList(context, ref, conversations),
+              loading: () => const Center(
+                child: CircularProgressIndicator(color: AppColors.primary),
+              ),
+              error: (Object error, StackTrace stackTrace) => const Center(
+                child: Text('Unable to load conversations'),
+              ),
             ),
           ),
-          const Divider(height: 1),
           _buildFooter(context, ref),
         ],
       ),
     );
   }
 
-  Widget _buildNewChatButton(BuildContext context, WidgetRef ref) {
+  Widget _buildHeader(BuildContext context, WidgetRef ref) {
     return Padding(
-      padding: const EdgeInsets.all(12),
-      child: FilledButton.icon(
-        onPressed: () async {
-          final created = await ref.read(conversationsProvider.notifier).create();
-          ref.read(selectedConversationIdProvider.notifier).state = created.id;
-          if (context.mounted && !isDesktop(context)) Navigator.of(context).pop();
-          if (context.mounted) context.go('/chat/${created.id}');
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('New chat'),
-        style: FilledButton.styleFrom(
-          minimumSize: const Size(double.infinity, 44),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSearchField(BuildContext context, WidgetRef ref) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: TextField(
-        decoration: InputDecoration(
-          hintText: 'Search chats',
-          prefixIcon: const Icon(Icons.search, size: 18),
-          filled: true,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide.none,
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () async {
+                final created = await ref
+                    .read(conversationsProvider.notifier)
+                    .create();
+                ref.read(selectedConversationIdProvider.notifier).state =
+                    created.id;
+                if (context.mounted) context.go('/chat/${created.id}');
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceRaised,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.add,
+                      size: 18,
+                      color: AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'New chat',
+                      style: AppTypography.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearch(BuildContext context, WidgetRef ref) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceRaised,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.search,
+              size: 16,
+              color: AppColors.textTertiary,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextField(
+                style: AppTypography.bodySmall,
+                decoration: InputDecoration(
+                  hintText: 'Search chats',
+                  hintStyle: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textTertiary,
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                onChanged: (value) {
+                  // TODO: implement search filtering.
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildConversationList(
+  Widget _buildList(
     BuildContext context,
     WidgetRef ref,
     List<Conversation> conversations,
   ) {
     final active = conversations.where((c) => !c.archived).toList();
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+
+    if (active.isEmpty) {
+      return Center(
+        child: Text(
+          'No conversations yet',
+          style: AppTypography.bodySmall.copyWith(
+            color: AppColors.textTertiary,
+          ),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       itemCount: active.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 4),
       itemBuilder: (context, index) {
         final conversation = active[index];
         return ConversationTile(
           conversation: conversation,
           isSelected: conversation.id == selectedConversationId,
           onTap: () {
-            ref.read(selectedConversationIdProvider.notifier).state = conversation.id;
+            ref.read(selectedConversationIdProvider.notifier).state =
+                conversation.id;
             if (context.mounted && !isDesktop(context)) {
               Navigator.of(context).pop();
             }
@@ -142,39 +208,51 @@ class AppShell extends ConsumerWidget {
           onRename: (newTitle) => ref
               .read(conversationsProvider.notifier)
               .updateConversation(conversation.copyWith(title: newTitle)),
-          onDuplicate: () => ref.read(conversationsProvider.notifier).duplicate(conversation.id),
+          onDuplicate: () => ref
+              .read(conversationsProvider.notifier)
+              .duplicate(conversation.id),
           onArchive: () => ref
               .read(conversationsProvider.notifier)
               .setArchived(conversation.id, !conversation.archived),
-          onDelete: () => ref.read(conversationsProvider.notifier).delete(conversation.id),
+          onDelete: () => ref
+              .read(conversationsProvider.notifier)
+              .delete(conversation.id),
         );
       },
     );
   }
 
   Widget _buildFooter(BuildContext context, WidgetRef ref) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        ListTile(
-          leading: const Icon(Icons.auto_awesome),
-          title: const Text('Models'),
-          dense: true,
-          onTap: () {
-            if (context.mounted && !isDesktop(context)) Navigator.of(context).pop();
-            if (context.mounted) context.push('/models');
-          },
-        ),
-        ListTile(
-          leading: const Icon(Icons.settings),
-          title: const Text('Settings'),
-          dense: true,
-          onTap: () {
-            if (context.mounted && !isDesktop(context)) Navigator.of(context).pop();
-            if (context.mounted) context.push('/settings');
-          },
-        ),
-      ],
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          IconButtonCustom(
+            icon: Icons.auto_awesome,
+            onTap: () {
+              if (context.mounted && !isDesktop(context)) {
+                Navigator.of(context).pop();
+              }
+              if (context.mounted) context.push('/models');
+            },
+            tooltip: 'Models',
+          ),
+          IconButtonCustom(
+            icon: Icons.settings,
+            onTap: () {
+              if (context.mounted && !isDesktop(context)) {
+                Navigator.of(context).pop();
+              }
+              if (context.mounted) context.push('/settings');
+            },
+            tooltip: 'Settings',
+          ),
+        ],
+      ),
     );
   }
 }

@@ -4,6 +4,10 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../providers/core_providers.dart';
+import '../themes/colors.dart';
+import '../themes/typography.dart';
+import '../widgets/common/animated_gradient_border.dart';
+import '../widgets/common/custom_text_field.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -42,7 +46,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     if (!isValid) {
       setState(() {
         _isTesting = false;
-        _error = 'Invalid OpenRouter API key or network error.';
+        _error = 'That key could not reach OpenRouter.';
       });
       return;
     }
@@ -55,86 +59,163 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
+      backgroundColor: AppColors.background,
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420),
+          constraints: const BoxConstraints(maxWidth: 440),
           child: Padding(
             padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  Icons.chat_bubble_outline,
-                  size: 56,
-                  color: theme.colorScheme.primary,
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Welcome to OpenChat',
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Enter your OpenRouter API key to continue. '
-                  'Your key is stored securely on this device only.',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.secondary,
-                      ),
-                ),
-                const SizedBox(height: 24),
-                TextField(
-                  controller: _controller,
-                  obscureText: _obscureText,
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    labelText: 'OpenRouter API key',
-                    hintText: 'sk-or-v1-...',
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscureText ? Icons.visibility_off : Icons.visibility,
-                      ),
-                      onPressed: () => setState(() => _obscureText = !_obscureText),
+            child: AnimatedGradientBorder(
+              child: Padding(
+                padding: const EdgeInsets.all(28),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [AppColors.primary, AppColors.accent],
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(
+                            Icons.chat_bubble,
+                            color: AppColors.background,
+                            size: 28,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Text(
+                          'OpenChat',
+                          style: AppTypography.display.copyWith(fontSize: 26),
+                        ),
+                      ],
                     ),
-                  ),
+                    const SizedBox(height: 18),
+                    Text(
+                      'Local-first. Private. Your OpenRouter key.',
+                      style: AppTypography.bodySmall,
+                    ),
+                    const SizedBox(height: 28),
+                    Text(
+                      'Enter your OpenRouter API key',
+                      style: AppTypography.title.copyWith(fontSize: 16),
+                    ),
+                    const SizedBox(height: 12),
+                    CustomTextField(
+                      controller: _controller,
+                      hintText: 'sk-or-v1-...',
+                      obscureText: _obscureText,
+                      autofocus: true,
+                      suffix: Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: GestureDetector(
+                          onTap: () => setState(() => _obscureText = !_obscureText),
+                          child: Icon(
+                            _obscureText
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            color: AppColors.textTertiary,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        _error!,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.error,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 20),
+                    _PrimaryButton(
+                      label: _isTesting ? 'Checking...' : 'Continue',
+                      onTap: _isTesting ? null : _saveKey,
+                    ),
+                    const SizedBox(height: 16),
+                    Center(
+                      child: TextButton(
+                        onPressed: () async {
+                          final url = Uri.parse('https://openrouter.ai/keys');
+                          if (await canLaunchUrl(url)) {
+                            await launchUrl(
+                              url,
+                              mode: LaunchMode.externalApplication,
+                            );
+                          }
+                        },
+                        child: Text(
+                          'Get an OpenRouter key',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                if (_error != null) ...[
-                  const SizedBox(height: 12),
-                  Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
-                ],
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: FilledButton(
-                    onPressed: _isTesting ? null : _saveKey,
-                    child: _isTesting
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Text('Continue'),
-                  ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PrimaryButton extends StatefulWidget {
+  const _PrimaryButton({required this.label, this.onTap});
+
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  State<_PrimaryButton> createState() => _PrimaryButtonState();
+}
+
+class _PrimaryButtonState extends State<_PrimaryButton> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [AppColors.primary, Color(0xFF6B42FF)],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(
+                  alpha: widget.onTap == null ? 0 : (_hovering ? 0.5 : 0.3),
                 ),
-                const SizedBox(height: 16),
-                Center(
-                  child: TextButton(
-                    onPressed: () async {
-                      final url = Uri.parse('https://openrouter.ai/keys');
-                      if (await canLaunchUrl(url)) {
-                        await launchUrl(url, mode: LaunchMode.externalApplication);
-                      }
-                    },
-                    child: const Text('Get an OpenRouter key'),
-                  ),
-                ),
-              ],
+                blurRadius: _hovering ? 24 : 12,
+                spreadRadius: -2,
+              ),
+            ],
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            widget.label,
+            style: AppTypography.body.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),

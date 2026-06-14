@@ -4,6 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../domain/models/openrouter_model.dart';
 import '../providers/core_providers.dart';
+import '../themes/colors.dart';
+import '../themes/typography.dart';
+import '../widgets/common/icon_button_custom.dart';
+import '../widgets/common/surface_card.dart';
 
 class ModelsScreen extends ConsumerStatefulWidget {
   const ModelsScreen({super.key});
@@ -22,28 +26,22 @@ class _ModelsScreenState extends ConsumerState<ModelsScreen> {
     final modelsAsync = ref.watch(modelsProvider(apiKey));
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Models'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh models',
-            onPressed: () => ref.read(modelsProvider(apiKey).notifier).refresh(apiKey),
-          ),
-        ],
-      ),
+      backgroundColor: AppColors.background,
       body: Column(
         children: [
-          _buildSearchAndSortBar(context),
+          _buildAppBar(context, apiKey),
           Expanded(
             child: modelsAsync.when(
-              data: (models) => _buildModelList(context, apiKey, _filterAndSort(models)),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, _) => Center(child: Text('Error: $err')),
+              data: (models) => _buildModelList(context, _filterAndSort(models)),
+              loading: () => const Center(
+                child: CircularProgressIndicator(color: AppColors.primary),
+              ),
+              error: (err, _) => Center(
+                child: Text(
+                  'Error: $err',
+                  style: AppTypography.body.copyWith(color: AppColors.error),
+                ),
+              ),
             ),
           ),
         ],
@@ -51,31 +49,27 @@ class _ModelsScreenState extends ConsumerState<ModelsScreen> {
     );
   }
 
-  Widget _buildSearchAndSortBar(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(12),
+  Widget _buildAppBar(BuildContext context, String apiKey) {
+    return Container(
+      height: 64,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
       child: Row(
         children: [
-          Expanded(
-            child: TextField(
-              decoration: const InputDecoration(
-                hintText: 'Search models',
-                prefixIcon: Icon(Icons.search, size: 18),
-              ),
-              onChanged: (value) => setState(() => _query = value.toLowerCase()),
-            ),
+          IconButtonCustom(
+            icon: Icons.arrow_back,
+            onTap: () => context.pop(),
           ),
-          const SizedBox(width: 8),
-          DropdownButton<_SortMode>(
-            value: _sortMode,
-            underline: const SizedBox.shrink(),
-            onChanged: (value) {
-              if (value != null) setState(() => _sortMode = value);
-            },
-            items: const [
-              DropdownMenuItem(value: _SortMode.name, child: Text('Name')),
-              DropdownMenuItem(value: _SortMode.price, child: Text('Price')),
-            ],
+          const SizedBox(width: 12),
+          Text('Models', style: AppTypography.title),
+          const Spacer(),
+          IconButtonCustom(
+            icon: Icons.refresh,
+            onTap: () => ref.read(modelsProvider(apiKey).notifier).refresh(apiKey),
+            tooltip: 'Refresh',
           ),
         ],
       ),
@@ -102,101 +96,178 @@ class _ModelsScreenState extends ConsumerState<ModelsScreen> {
     return filtered;
   }
 
-  Widget _buildModelList(BuildContext context, String apiKey, List<OpenRouterModel> models) {
-    if (models.isEmpty) {
-      return const Center(child: Text('No models found.'));
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      itemCount: models.length,
-      itemBuilder: (context, index) {
-        final model = models[index];
-        return _ModelCard(
-          apiKey: apiKey,
-          model: model,
-        );
-      },
+  Widget _buildModelList(BuildContext context, List<OpenRouterModel> models) {
+    return Column(
+      children: [
+        _buildFilters(context),
+        Expanded(
+          child: models.isEmpty
+              ? Center(
+                  child: Text(
+                    'No models found.',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(14),
+                  itemCount: models.length,
+                  itemBuilder: (context, index) {
+                    final model = models[index];
+                    return _ModelCard(
+                      apiKey: ref.watch(apiKeyProvider).valueOrNull ?? '',
+                      model: model,
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilters(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceRaised,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.search, size: 18, color: AppColors.textTertiary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      style: AppTypography.body,
+                      decoration: InputDecoration(
+                        hintText: 'Search models',
+                        hintStyle: AppTypography.body.copyWith(
+                          color: AppColors.textTertiary,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      onChanged: (value) =>
+                          setState(() => _query = value.toLowerCase()),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceRaised,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<_SortMode>(
+                value: _sortMode,
+                dropdownColor: AppColors.surfaceRaised,
+                style: AppTypography.bodySmall,
+                icon: const Icon(Icons.sort, size: 18, color: AppColors.textSecondary),
+                onChanged: (value) {
+                  if (value != null) setState(() => _sortMode = value);
+                },
+                items: _SortMode.values.map((mode) {
+                  return DropdownMenuItem<_SortMode>(
+                    value: mode,
+                    child: Text(
+                      mode.name.capitalize(),
+                      style: AppTypography.bodySmall,
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
 enum _SortMode { name, price }
 
+extension _StringX on String {
+  String capitalize() {
+    if (isEmpty) return this;
+    return '${this[0].toUpperCase()}${substring(1)}';
+  }
+}
+
 class _ModelCard extends ConsumerWidget {
-  const _ModelCard({
-    required this.apiKey,
-    required this.model,
-  });
+  const _ModelCard({required this.apiKey, required this.model});
 
   final String apiKey;
   final OpenRouterModel model;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
-        onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Selected ${model.displayName}')),
-          );
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return SurfaceCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      model.displayName,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      model.isFavorite ? Icons.star : Icons.star_border,
-                      size: 20,
-                      color: model.isFavorite ? Colors.amber : null,
-                    ),
-                    onPressed: () {
-                      ref.read(modelsProvider(apiKey).notifier).toggleFavorite(model.id);
-                    },
-                  ),
-                ],
-              ),
-              if (model.description != null && model.description!.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    model.description!,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+              Expanded(
+                child: Text(
+                  model.displayName,
+                  style: AppTypography.title.copyWith(fontSize: 15),
                 ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: [
-                  if (model.contextLength > 0)
-                    _Chip(label: '${model.contextLength} ctx'),
-                  if (model.pricing != null) ...[
-                    _Chip(label: '\$${_format(model.pricing!.prompt)}/1M in'),
-                    _Chip(label: '\$${_format(model.pricing!.completion)}/1M out'),
-                  ],
-                  if (model.supportsVision) const _Chip(label: 'Vision'),
-                  if (model.supportsTools) const _Chip(label: 'Tools'),
-                  if (model.supportsReasoning) const _Chip(label: 'Reasoning'),
-                ],
+              ),
+              GestureDetector(
+                onTap: () {
+                  ref
+                      .read(modelsProvider(apiKey).notifier)
+                      .toggleFavorite(model.id);
+                },
+                child: Icon(
+                  model.isFavorite ? Icons.star : Icons.star_border,
+                  size: 20,
+                  color: model.isFavorite ? AppColors.accent : AppColors.textTertiary,
+                ),
               ),
             ],
           ),
-        ),
+          if (model.description != null && model.description!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                model.description!,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.bodySmall,
+              ),
+            ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (model.contextLength > 0)
+                _Tag(label: '${model.contextLength} ctx'),
+              if (model.pricing != null) ...[
+                _Tag(label: '\$${_format(model.pricing!.prompt)}/1M in'),
+                _Tag(label: '\$${_format(model.pricing!.completion)}/1M out'),
+              ],
+              if (model.supportsVision) const _Tag(label: 'Vision'),
+              if (model.supportsTools) const _Tag(label: 'Tools'),
+              if (model.supportsReasoning) const _Tag(label: 'Reasoning'),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -208,22 +279,23 @@ class _ModelCard extends ConsumerWidget {
   }
 }
 
-class _Chip extends StatelessWidget {
-  const _Chip({required this.label});
+class _Tag extends StatelessWidget {
+  const _Tag({required this.label});
 
   final String label;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(6),
+        color: AppColors.surfaceOverlay,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
       ),
       child: Text(
         label,
-        style: Theme.of(context).textTheme.labelSmall,
+        style: AppTypography.label.copyWith(fontSize: 10),
       ),
     );
   }

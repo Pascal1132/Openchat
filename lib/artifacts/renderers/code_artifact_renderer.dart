@@ -2,15 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/atom-one-dark.dart';
-import 'package:flutter_highlight/themes/github.dart';
 
 import '../../domain/models/artifact.dart';
+import '../../presentation/themes/colors.dart';
+import '../../presentation/themes/typography.dart';
 
 class CodeArtifactRenderer extends StatelessWidget {
-  const CodeArtifactRenderer({
-    required this.artifact,
-    super.key,
-  });
+  const CodeArtifactRenderer({required this.artifact, super.key});
 
   final Artifact artifact;
 
@@ -18,8 +16,7 @@ class CodeArtifactRenderer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final theme = isDark ? atomOneDarkTheme : githubTheme;
+    const theme = atomOneDarkTheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -33,7 +30,7 @@ class CodeArtifactRenderer extends StatelessWidget {
               language: _language,
               theme: theme,
               padding: const EdgeInsets.all(16),
-              textStyle: const TextStyle(fontFamily: 'monospace', fontSize: 13),
+              textStyle: AppTypography.code,
             ),
           ),
         ),
@@ -43,28 +40,47 @@ class CodeArtifactRenderer extends StatelessWidget {
 
   Widget _buildToolbar(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      color: AppColors.surfaceRaised,
       child: Row(
         children: [
-          Icon(Icons.code, size: 16, color: Theme.of(context).colorScheme.primary),
+          const Icon(
+            Icons.code,
+            size: 16,
+            color: AppColors.primary,
+          ),
           const SizedBox(width: 8),
           Text(
             _language.toUpperCase(),
-            style: Theme.of(context).textTheme.labelMedium,
+            style: AppTypography.label.copyWith(color: AppColors.textSecondary),
           ),
           const Spacer(),
-          TextButton.icon(
-            onPressed: () async {
+          GestureDetector(
+            onTap: () async {
               await Clipboard.setData(ClipboardData(text: artifact.content));
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Code copied')),
+                  SnackBar(
+                    backgroundColor: AppColors.surfaceRaised,
+                    content: Text(
+                      'Code copied',
+                      style: AppTypography.bodySmall,
+                    ),
+                  ),
                 );
               }
             },
-            icon: const Icon(Icons.copy, size: 16),
-            label: const Text('Copy'),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.copy, size: 14, color: AppColors.textSecondary),
+                const SizedBox(width: 6),
+                Text(
+                  'Copy',
+                  style: AppTypography.label,
+                ),
+              ],
+            ),
           ),
         ],
       ),
