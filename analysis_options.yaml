@@ -25,6 +25,5 @@ linter:
     cancel_subscriptions: true
     close_sinks: true
     directives_ordering: true
-    package_api_docs: false
     prefer_relative_imports: true
     sort_pub_dependencies: true
