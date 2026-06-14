@@ -187,12 +187,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     bool showArtifacts,
     List<OpenRouterModel> models,
   ) {
+    final artifacts =
+        artifactsAsync.valueOrNull ?? <domain_artifact.Artifact>[];
+    final desktop = isDesktop(context);
+
     return Column(
       children: [
         _TopBar(
           title: conversation.displayTitle,
           subtitle: conversation.modelName ?? conversation.modelId,
-          showMenu: !isDesktop(context),
+          showMenu: !desktop,
+          artifactCount:
+              (!desktop && showArtifacts) ? artifacts.length : 0,
+          onOpenArtifacts: () => _openArtifactsSheet(context, conversation.id),
         ),
         Expanded(
           child: Row(
@@ -204,7 +211,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   scrollController: _scrollController,
                 ),
               ),
-              if (isDesktop(context) && showArtifacts)
+              if (desktop && showArtifacts)
                 _ArtifactDrawer(
                   artifactsAsync: artifactsAsync,
                   streamingMessage: streamingMessage,
@@ -218,6 +225,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           isLoading: isSending,
           availableModels: models,
           selectedModel: _findSelectedModel(models, conversation.modelId),
+          selectedModelName: conversation.modelName,
+          selectedModelId: conversation.modelId,
           onModelChanged: (model) => _onModelChanged(conversation, model),
         ),
       ],
@@ -247,6 +256,79 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
         );
   }
+
+  void _openArtifactsSheet(BuildContext context, String conversationId) {
+    FocusManager.instance.primaryFocus?.unfocus();
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return Consumer(
+          builder: (context, sheetRef, _) {
+            final artifacts =
+                sheetRef.watch(artifactsProvider(conversationId)).valueOrNull ??
+                    <domain_artifact.Artifact>[];
+            return DraggableScrollableSheet(
+              initialChildSize: 0.9,
+              minChildSize: 0.5,
+              maxChildSize: 0.95,
+              expand: false,
+              builder: (context, scrollController) {
+                return Container(
+                  decoration: const BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+                    border: Border(top: BorderSide(color: AppColors.border)),
+                  ),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 10),
+                      Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.border,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Row(
+                          children: [
+                            Text('Artifacts', style: AppTypography.title),
+                            const Spacer(),
+                            IconButtonCustom(
+                              icon: Icons.close,
+                              onTap: () => Navigator.of(sheetContext).pop(),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: ArtifactPanel(
+                          artifacts: artifacts,
+                          selectedArtifactId:
+                              artifacts.isNotEmpty ? artifacts.first.id : null,
+                          onArtifactDeleted: (artifact) async {
+                            await sheetRef
+                                .read(artifactRepositoryProvider)
+                                .deleteArtifact(artifact.id);
+                            sheetRef.invalidate(
+                                artifactsProvider(conversationId));
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
 }
 
 class _TopBar extends StatelessWidget {
@@ -254,11 +336,15 @@ class _TopBar extends StatelessWidget {
     required this.title,
     required this.subtitle,
     this.showMenu = false,
+    this.artifactCount = 0,
+    this.onOpenArtifacts,
   });
 
   final String title;
   final String? subtitle;
   final bool showMenu;
+  final int artifactCount;
+  final VoidCallback? onOpenArtifacts;
 
   @override
   Widget build(BuildContext context) {
@@ -275,8 +361,10 @@ class _TopBar extends StatelessWidget {
             IconButtonCustom(
               icon: Icons.menu,
               onTap: () {
-                final scaffold = Scaffold.maybeOf(context);
-                scaffold?.openDrawer();
+                // Drop the keyboard before sliding the drawer in, otherwise
+                // it lingers and leaves a large gap on mobile.
+                FocusManager.instance.primaryFocus?.unfocus();
+                Scaffold.maybeOf(context)?.openDrawer();
               },
               tooltip: 'Menu',
             ),
@@ -305,6 +393,43 @@ class _TopBar extends StatelessWidget {
               ],
             ),
           ),
+          if (artifactCount > 0 && onOpenArtifacts != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  IconButtonCustom(
+                    icon: Icons.auto_awesome_mosaic,
+                    onTap: onOpenArtifacts,
+                    tooltip: 'Artifacts',
+                  ),
+                  Positioned(
+                    right: -2,
+                    top: -2,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      child: Text(
+                        '$artifactCount',
+                        textAlign: TextAlign.center,
+                        style: AppTypography.label.copyWith(
+                          fontSize: 9,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );

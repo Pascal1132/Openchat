@@ -14,6 +14,8 @@ class ChatInput extends ConsumerStatefulWidget {
     this.hintText = 'Message OpenChat...',
     this.availableModels = const <OpenRouterModel>[],
     this.selectedModel,
+    this.selectedModelName,
+    this.selectedModelId,
     this.onModelChanged,
     super.key,
   });
@@ -24,6 +26,10 @@ class ChatInput extends ConsumerStatefulWidget {
   final String hintText;
   final List<OpenRouterModel> availableModels;
   final OpenRouterModel? selectedModel;
+  /// Fallback display name when [availableModels] hasn't loaded yet but the
+  /// conversation already has a model assigned.
+  final String? selectedModelName;
+  final String? selectedModelId;
   final ValueChanged<OpenRouterModel?>? onModelChanged;
 
   @override
@@ -79,6 +85,8 @@ class _ChatInputState extends ConsumerState<ChatInput> {
               child: _ModelSelector(
                 models: widget.availableModels,
                 selected: widget.selectedModel,
+                fallbackName: widget.selectedModelName,
+                selectedId: widget.selectedModelId,
                 onChanged: widget.onModelChanged,
               ),
             ),
@@ -138,16 +146,28 @@ class _ModelSelector extends StatelessWidget {
   const _ModelSelector({
     required this.models,
     this.selected,
+    this.fallbackName,
+    this.selectedId,
     this.onChanged,
   });
 
   final List<OpenRouterModel> models;
   final OpenRouterModel? selected;
+  final String? fallbackName;
+  final String? selectedId;
   final ValueChanged<OpenRouterModel?>? onChanged;
 
   @override
   Widget build(BuildContext context) {
-    final display = selected?.displayName ?? 'Default model';
+    // Prefer the resolved model, fall back to the name stored on the
+    // conversation (models list may still be loading), else "Default model".
+    final hasModel = selected != null ||
+        (fallbackName != null && fallbackName!.isNotEmpty) ||
+        (selectedId != null && selectedId!.isNotEmpty);
+    final display = selected?.displayName ??
+        (fallbackName?.isNotEmpty == true ? fallbackName! : null) ??
+        selectedId ??
+        'Default model';
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -158,7 +178,7 @@ class _ModelSelector extends StatelessWidget {
           Icon(
             Icons.auto_awesome,
             size: 11,
-            color: selected != null ? AppColors.primary : AppColors.textTertiary,
+            color: hasModel ? AppColors.primary : AppColors.textTertiary,
           ),
           const SizedBox(width: 5),
           ConstrainedBox(
@@ -168,9 +188,7 @@ class _ModelSelector extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppTypography.label.copyWith(
-                color: selected != null
-                    ? AppColors.primary
-                    : AppColors.textTertiary,
+                color: hasModel ? AppColors.primary : AppColors.textTertiary,
               ),
             ),
           ),
@@ -185,13 +203,14 @@ class _ModelSelector extends StatelessWidget {
   }
 
   Future<void> _showModelSheet(BuildContext context) async {
+    FocusManager.instance.primaryFocus?.unfocus();
     final result = await showModalBottomSheet<_ModelChoice>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) => _ModelPickerSheet(
         models: models,
-        selectedId: selected?.id,
+        selectedId: selected?.id ?? selectedId,
       ),
     );
     if (result != null) {
