@@ -1,0 +1,28 @@
+# OpenChat — Apache static hosting under /chat/
+
+AddType application/javascript .js
+AddType application/javascript .mjs
+AddType application/wasm .wasm
+AddType application/json .json
+
+# SPA fallback: route unknown paths back to the Flutter entrypoint so deep
+# links like /chat/settings work on refresh.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /chat/
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /chat/index.html [L]
+</IfModule>
+
+# Never cache the bootstrapping files so new deploys are picked up immediately.
+<FilesMatch "(index\.html|flutter_bootstrap\.js|flutter_service_worker\.js|manifest\.json)$">
+  Header set Cache-Control "no-cache, no-store, must-revalidate"
+  Header set Pragma "no-cache"
+  Header set Expires "0"
+</FilesMatch>
+
+# The APK is large and immutable per release name; allow short caching.
+<FilesMatch "\.apk$">
+  Header set Content-Disposition "attachment; filename=openchat.apk"
+</FilesMatch>

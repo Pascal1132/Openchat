@@ -60,13 +60,16 @@
 
   <script src="flutter_bootstrap.js" async></script>
   <script>
-    window.addEventListener('flutter-first-frame', function () {
+    function openchatHideSplash() {
       var splash = document.getElementById('openchat-splash');
       if (splash) {
         splash.style.opacity = '0';
         setTimeout(function () { splash.remove(); }, 450);
       }
-    });
+    }
+    window.addEventListener('flutter-first-frame', openchatHideSplash);
+    // Safety net: never let the splash trap the user if the event is missed.
+    setTimeout(openchatHideSplash, 8000);
   </script>
 </body>
 </html>
