@@ -1,11 +1,11 @@
 {
-    "name": "openchat",
-    "short_name": "openchat",
+    "name": "OpenChat",
+    "short_name": "OpenChat",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0D0D0F",
+    "theme_color": "#0D0D0F",
+    "description": "A local-first ChatGPT alternative powered by OpenRouter.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

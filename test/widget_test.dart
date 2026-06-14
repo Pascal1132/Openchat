@@ -32,7 +32,8 @@ void main() {
       ),
     );
 
-    expect(find.text('Welcome to OpenChat'), findsOneWidget);
+    expect(find.text('OpenChat'), findsOneWidget);
+    expect(find.text('Enter your OpenRouter API key'), findsOneWidget);
     expect(find.text('Continue'), findsOneWidget);
   });
 }

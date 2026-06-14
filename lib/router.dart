@@ -11,19 +11,25 @@ import 'presentation/screens/settings_screen.dart';
 final routerProvider = Provider<GoRouter>((ref) {
   final navigatorKey = GlobalKey<NavigatorState>();
 
+  // Re-run redirects whenever the API key is set or cleared.
+  final refresh = _ApiKeyRefreshListenable(ref);
+  ref.onDispose(refresh.dispose);
+
   return GoRouter(
     navigatorKey: navigatorKey,
     initialLocation: '/',
-    redirect: (context, state) async {
-      final apiKey = ref.read(apiKeyProvider).valueOrNull;
+    refreshListenable: refresh,
+    redirect: (context, state) {
+      final apiKeyAsync = ref.read(apiKeyProvider);
+      // While the key is still loading from secure storage, don't redirect.
+      if (apiKeyAsync.isLoading) return null;
+
+      final apiKey = apiKeyAsync.valueOrNull;
+      final hasKey = apiKey != null && apiKey.isNotEmpty;
       final isOnOnboarding = state.matchedLocation == '/onboarding';
 
-      if ((apiKey == null || apiKey.isEmpty) && !isOnOnboarding) {
-        return '/onboarding';
-      }
-      if ((apiKey != null && apiKey.isNotEmpty) && isOnOnboarding) {
-        return '/';
-      }
+      if (!hasKey && !isOnOnboarding) return '/onboarding';
+      if (hasKey && isOnOnboarding) return '/';
       return null;
     },
     routes: [
@@ -53,3 +59,22 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+/// Notifies GoRouter whenever the API key state changes so guarded routes
+/// (onboarding vs app) are re-evaluated.
+class _ApiKeyRefreshListenable extends ChangeNotifier {
+  _ApiKeyRefreshListenable(Ref ref) {
+    _sub = ref.listen<AsyncValue<String?>>(
+      apiKeyProvider,
+      (_, __) => notifyListeners(),
+    );
+  }
+
+  late final ProviderSubscription<AsyncValue<String?>> _sub;
+
+  @override
+  void dispose() {
+    _sub.close();
+    super.dispose();
+  }
+}

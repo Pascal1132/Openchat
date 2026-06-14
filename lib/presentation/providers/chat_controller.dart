@@ -45,16 +45,25 @@ class ChatController {
           tools: tools,
         );
 
+    // Make the freshly-persisted user message visible immediately.
+    _ref.invalidate(messagesProvider(conversation.id));
+
+    var sawArtifacts = false;
     _streamSubscription = stream.listen(
       (update) {
+        // Drive the live view from the in-memory streaming message; avoid
+        // hammering the database on every token.
         _ref.read(streamingMessageProvider.notifier).state = update.message;
-        // Refresh messages so the history list stays in sync.
-        _ref.invalidate(messagesProvider(conversation.id));
-        _ref.invalidate(artifactsProvider(conversation.id));
+        if (update.artifacts.isNotEmpty && !sawArtifacts) {
+          sawArtifacts = true;
+          _ref.invalidate(artifactsProvider(conversation.id));
+        }
       },
       onError: (Object error) {
         _ref.read(streamingMessageProvider.notifier).state = null;
         _ref.read(chatSendStateProvider.notifier).state = false;
+        _ref.invalidate(messagesProvider(conversation.id));
+        _streamSubscription = null;
       },
       onDone: () {
         _ref.read(streamingMessageProvider.notifier).state = null;

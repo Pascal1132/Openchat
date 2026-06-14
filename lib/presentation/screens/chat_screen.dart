@@ -14,6 +14,7 @@ import '../themes/colors.dart';
 import '../themes/typography.dart';
 import '../widgets/app_shell.dart';
 import '../widgets/chat_input.dart';
+import '../widgets/common/icon_button_custom.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/responsive_layout.dart';
 
@@ -32,12 +33,36 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.conversationId != null) {
-        ref.read(selectedConversationIdProvider.notifier).state =
-            widget.conversationId;
-      }
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _ensureConversation());
+  }
+
+  /// Makes sure the user always lands inside a usable conversation:
+  /// honours an explicit route id, otherwise selects the most recent chat,
+  /// or creates a fresh one when none exist yet.
+  Future<void> _ensureConversation() async {
+    if (widget.conversationId != null) {
+      ref.read(selectedConversationIdProvider.notifier).state =
+          widget.conversationId;
+      return;
+    }
+
+    if (ref.read(selectedConversationIdProvider) != null) return;
+
+    final conversations =
+        await ref.read(conversationRepositoryProvider).getAllConversations();
+    final active = conversations.where((c) => !c.archived).toList();
+
+    if (!mounted) return;
+
+    if (active.isNotEmpty) {
+      ref.read(selectedConversationIdProvider.notifier).state = active.first.id;
+      if (mounted) context.go('/chat/${active.first.id}');
+    } else {
+      final created = await ref.read(conversationsProvider.notifier).create();
+      if (!mounted) return;
+      ref.read(selectedConversationIdProvider.notifier).state = created.id;
+      if (mounted) context.go('/chat/${created.id}');
+    }
   }
 
   @override
@@ -107,35 +132,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _buildEmptyState(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.primary, AppColors.accent],
-              ),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: const Icon(
-              Icons.chat_bubble,
-              color: AppColors.background,
-              size: 40,
-            ),
+    return Column(
+      children: [
+        _TopBar(
+          title: 'OpenChat',
+          subtitle: null,
+          showMenu: !isDesktop(context),
+        ),
+        const Expanded(
+          child: Center(
+            child: CircularProgressIndicator(color: AppColors.primary),
           ),
-          const SizedBox(height: 20),
-          Text('OpenChat', style: AppTypography.display),
-          const SizedBox(height: 6),
-          Text(
-            'Start a new conversation from the sidebar.',
-            style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textTertiary,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -151,9 +160,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   ) {
     return Column(
       children: [
-        _AppBar(
-          conversation: conversation,
-          onBack: () => context.go('/'),
+        _TopBar(
+          title: conversation.displayTitle,
+          subtitle: conversation.modelName ?? conversation.modelId,
+          showMenu: !isDesktop(context),
         ),
         Expanded(
           child: Row(
@@ -210,49 +220,55 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 }
 
-class _AppBar extends StatelessWidget {
-  const _AppBar({required this.conversation, required this.onBack});
+class _TopBar extends StatelessWidget {
+  const _TopBar({
+    required this.title,
+    required this.subtitle,
+    this.showMenu = false,
+  });
 
-  final Conversation conversation;
-  final VoidCallback onBack;
+  final String title;
+  final String? subtitle;
+  final bool showMenu;
 
   @override
   Widget build(BuildContext context) {
-    final modelName = conversation.modelName ?? conversation.modelId;
-
     return Container(
       height: 64,
-      padding: const EdgeInsets.symmetric(horizontal: 18),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: const BoxDecoration(
         color: AppColors.surface,
         border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
       child: Row(
         children: [
-          if (!isDesktop(context))
-            GestureDetector(
-              onTap: Scaffold.of(context).openDrawer,
-              child: const Icon(
-                Icons.menu,
-                color: AppColors.textSecondary,
-                size: 22,
-              ),
+          if (showMenu) ...[
+            IconButtonCustom(
+              icon: Icons.menu,
+              onTap: () {
+                final scaffold = Scaffold.maybeOf(context);
+                scaffold?.openDrawer();
+              },
+              tooltip: 'Menu',
             ),
-          if (!isDesktop(context)) const SizedBox(width: 12),
+            const SizedBox(width: 12),
+          ],
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  conversation.displayTitle,
+                  title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.title.copyWith(fontSize: 15),
                 ),
-                if (modelName != null)
+                if (subtitle != null && subtitle!.isNotEmpty)
                   Text(
-                    modelName,
+                    subtitle!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: AppTypography.label.copyWith(
                       color: AppColors.primary,
                     ),
@@ -266,7 +282,7 @@ class _AppBar extends StatelessWidget {
   }
 }
 
-class _MessageList extends StatelessWidget {
+class _MessageList extends ConsumerWidget {
   const _MessageList({
     required this.messagesAsync,
     required this.streamingMessage,
@@ -278,7 +294,7 @@ class _MessageList extends StatelessWidget {
   final ScrollController scrollController;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return messagesAsync.when(
       data: (messages) {
         final displayMessages = [...messages];
@@ -299,7 +315,10 @@ class _MessageList extends StatelessWidget {
             final message = displayMessages[index];
             return MessageBubble(
               message: message,
-              onRegenerate: () => _regenerate(message),
+              onRegenerate: message.role == MessageRole.assistant &&
+                      !message.isStreaming
+                  ? () => ref.read(chatControllerProvider).regenerate(message)
+                  : null,
               onCopy: () => _copy(context, message.content),
             );
           },
@@ -315,12 +334,6 @@ class _MessageList extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  void _regenerate(Message message) {
-    // Implemented via parent context using ref is not accessible here without
-    // making this widget a ConsumerWidget. Kept no-op for current refactor;
-    // the chat controller uses regenerate on the message through the provider.
   }
 
   Future<void> _copy(BuildContext context, String text) async {
@@ -339,53 +352,95 @@ class _MessageList extends StatelessWidget {
   }
 }
 
-class _EmptyConversationState extends StatelessWidget {
+class _EmptyConversationState extends ConsumerWidget {
   const _EmptyConversationState();
 
+  static const _suggestions = <String>[
+    'Explain a concept simply',
+    'Write a Dart function',
+    'Brainstorm ideas with me',
+  ];
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            'What can I do for you?',
-            style: AppTypography.title,
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            alignment: WrapAlignment.center,
-            children: [
-              _SuggestionChip(label: 'Explain a concept'),
-              _SuggestionChip(label: 'Write Dart code'),
-              _SuggestionChip(label: 'Summarize a PDF'),
-            ],
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppColors.primary, AppColors.accent],
+                ),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(
+                Icons.auto_awesome,
+                color: AppColors.background,
+                size: 32,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'What can I do for you?',
+              style: AppTypography.title,
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: _suggestions
+                  .map(
+                    (s) => _SuggestionChip(
+                      label: s,
+                      onTap: () => _send(ref, s),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  Future<void> _send(WidgetRef ref, String prompt) async {
+    final id = ref.read(selectedConversationIdProvider);
+    if (id == null) return;
+    final conversation =
+        await ref.read(conversationRepositoryProvider).getConversationById(id);
+    if (conversation == null) return;
+    await ref
+        .read(chatControllerProvider)
+        .sendMessage(conversation: conversation, content: prompt);
   }
 }
 
 class _SuggestionChip extends StatelessWidget {
-  const _SuggestionChip({required this.label});
+  const _SuggestionChip({required this.label, this.onTap});
 
   final String label;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Text(
-        label,
-        style: AppTypography.bodySmall,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Text(
+          label,
+          style: AppTypography.bodySmall,
+        ),
       ),
     );
   }
