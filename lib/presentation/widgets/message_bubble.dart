@@ -56,6 +56,7 @@ class MessageBubble extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context) {
+    final modelLabel = message.modelName ?? message.modelId;
     return Row(
       children: [
         Text(
@@ -65,6 +66,37 @@ class MessageBubble extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
+        if (!_isUser && modelLabel != null && modelLabel.isNotEmpty) ...[
+          const SizedBox(width: 8),
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceOverlay,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.auto_awesome, size: 9, color: AppColors.primary),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      modelLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.label.copyWith(
+                        fontSize: 10,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
         if (message.isStreaming) ...[
           const SizedBox(width: 8),
           Container(

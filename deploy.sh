@@ -11,7 +11,9 @@ APK_TARGET="$TARGET_DIR/openchat.apk"
 echo "Building OpenChat for web..."
 cd /root/test-html-site/chat
 export PATH="$PATH:/root/flutter/bin"
-flutter build web --release --base-href /chat/
+# pwa-strategy=none: do not generate/register a service worker (it caches the
+# app too aggressively behind Cloudflare and traps users on stale builds).
+flutter build web --release --base-href /chat/ --pwa-strategy=none
 
 echo "Deploying to $TARGET_DIR..."
 if [ -L "$TARGET_DIR" ]; then
@@ -21,6 +23,15 @@ elif [ -d "$TARGET_DIR" ]; then
 fi
 
 cp -r "$WEB_SOURCE" "$TARGET_DIR"
+
+# Cache-bust the entrypoint scripts so Cloudflare (which caches fixed-name
+# .js for 4h) is forced to fetch the new build. index.html itself is served
+# uncached, so a fresh ?v= ripples through to the rest.
+BUILD_ID="$(date +%s)"
+sed -i "s#flutter_bootstrap\.js#flutter_bootstrap.js?v=${BUILD_ID}#g" "$TARGET_DIR/index.html"
+sed -i "s#main\.dart\.js#main.dart.js?v=${BUILD_ID}#g" "$TARGET_DIR/flutter_bootstrap.js"
+echo "Cache-bust build id: ${BUILD_ID}"
+
 find "$TARGET_DIR" -type d -exec chmod 755 {} \;
 find "$TARGET_DIR" -type f -exec chmod 644 {} \;
 

@@ -43,6 +43,12 @@ mixin _$Message {
   /// Approximate token count for this message.
   int? get tokenCountApprox => throw _privateConstructorUsedError;
 
+  /// Id of the model that generated this (assistant) message.
+  String? get modelId => throw _privateConstructorUsedError;
+
+  /// Human-readable name of the model that generated this message.
+  String? get modelName => throw _privateConstructorUsedError;
+
   /// Serializes this Message to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
 
@@ -69,6 +75,8 @@ abstract class $MessageCopyWith<$Res> {
     Map<String, dynamic>? toolCalls,
     Map<String, dynamic>? toolResult,
     int? tokenCountApprox,
+    String? modelId,
+    String? modelName,
   });
 }
 
@@ -98,6 +106,8 @@ class _$MessageCopyWithImpl<$Res, $Val extends Message>
     Object? toolCalls = freezed,
     Object? toolResult = freezed,
     Object? tokenCountApprox = freezed,
+    Object? modelId = freezed,
+    Object? modelName = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -156,6 +166,16 @@ class _$MessageCopyWithImpl<$Res, $Val extends Message>
                     ? _value.tokenCountApprox
                     : tokenCountApprox // ignore: cast_nullable_to_non_nullable
                         as int?,
+            modelId:
+                freezed == modelId
+                    ? _value.modelId
+                    : modelId // ignore: cast_nullable_to_non_nullable
+                        as String?,
+            modelName:
+                freezed == modelName
+                    ? _value.modelName
+                    : modelName // ignore: cast_nullable_to_non_nullable
+                        as String?,
           )
           as $Val,
     );
@@ -182,6 +202,8 @@ abstract class _$$MessageImplCopyWith<$Res> implements $MessageCopyWith<$Res> {
     Map<String, dynamic>? toolCalls,
     Map<String, dynamic>? toolResult,
     int? tokenCountApprox,
+    String? modelId,
+    String? modelName,
   });
 }
 
@@ -210,6 +232,8 @@ class __$$MessageImplCopyWithImpl<$Res>
     Object? toolCalls = freezed,
     Object? toolResult = freezed,
     Object? tokenCountApprox = freezed,
+    Object? modelId = freezed,
+    Object? modelName = freezed,
   }) {
     return _then(
       _$MessageImpl(
@@ -268,6 +292,16 @@ class __$$MessageImplCopyWithImpl<$Res>
                 ? _value.tokenCountApprox
                 : tokenCountApprox // ignore: cast_nullable_to_non_nullable
                     as int?,
+        modelId:
+            freezed == modelId
+                ? _value.modelId
+                : modelId // ignore: cast_nullable_to_non_nullable
+                    as String?,
+        modelName:
+            freezed == modelName
+                ? _value.modelName
+                : modelName // ignore: cast_nullable_to_non_nullable
+                    as String?,
       ),
     );
   }
@@ -288,6 +322,8 @@ class _$MessageImpl extends _Message {
     final Map<String, dynamic>? toolCalls,
     final Map<String, dynamic>? toolResult,
     this.tokenCountApprox,
+    this.modelId,
+    this.modelName,
   }) : _artifactIds = artifactIds,
        _toolCalls = toolCalls,
        _toolResult = toolResult,
@@ -356,9 +392,17 @@ class _$MessageImpl extends _Message {
   @override
   final int? tokenCountApprox;
 
+  /// Id of the model that generated this (assistant) message.
+  @override
+  final String? modelId;
+
+  /// Human-readable name of the model that generated this message.
+  @override
+  final String? modelName;
+
   @override
   String toString() {
-    return 'Message(id: $id, conversationId: $conversationId, role: $role, content: $content, createdAt: $createdAt, updatedAt: $updatedAt, isStreaming: $isStreaming, artifactIds: $artifactIds, toolCalls: $toolCalls, toolResult: $toolResult, tokenCountApprox: $tokenCountApprox)';
+    return 'Message(id: $id, conversationId: $conversationId, role: $role, content: $content, createdAt: $createdAt, updatedAt: $updatedAt, isStreaming: $isStreaming, artifactIds: $artifactIds, toolCalls: $toolCalls, toolResult: $toolResult, tokenCountApprox: $tokenCountApprox, modelId: $modelId, modelName: $modelName)';
   }
 
   @override
@@ -390,7 +434,10 @@ class _$MessageImpl extends _Message {
               _toolResult,
             ) &&
             (identical(other.tokenCountApprox, tokenCountApprox) ||
-                other.tokenCountApprox == tokenCountApprox));
+                other.tokenCountApprox == tokenCountApprox) &&
+            (identical(other.modelId, modelId) || other.modelId == modelId) &&
+            (identical(other.modelName, modelName) ||
+                other.modelName == modelName));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -408,6 +455,8 @@ class _$MessageImpl extends _Message {
     const DeepCollectionEquality().hash(_toolCalls),
     const DeepCollectionEquality().hash(_toolResult),
     tokenCountApprox,
+    modelId,
+    modelName,
   );
 
   /// Create a copy of Message
@@ -437,6 +486,8 @@ abstract class _Message extends Message {
     final Map<String, dynamic>? toolCalls,
     final Map<String, dynamic>? toolResult,
     final int? tokenCountApprox,
+    final String? modelId,
+    final String? modelName,
   }) = _$MessageImpl;
   const _Message._() : super._();
 
@@ -474,6 +525,14 @@ abstract class _Message extends Message {
   /// Approximate token count for this message.
   @override
   int? get tokenCountApprox;
+
+  /// Id of the model that generated this (assistant) message.
+  @override
+  String? get modelId;
+
+  /// Human-readable name of the model that generated this message.
+  @override
+  String? get modelName;
 
   /// Create a copy of Message
   /// with the given fields replaced by the non-null parameter values.

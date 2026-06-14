@@ -30,10 +30,22 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _scrollController = ScrollController();
 
+  /// Whether the view is pinned to the bottom (so streaming should keep it
+  /// glued there). Set to false as soon as the user scrolls up to read.
+  bool _stickToBottom = true;
+
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) => _ensureConversation());
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final pos = _scrollController.position;
+    // Consider "at bottom" when within 80px of the end.
+    _stickToBottom = pos.pixels >= pos.maxScrollExtent - 80;
   }
 
   /// Makes sure the user always lands inside a usable conversation:
@@ -67,30 +79,47 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
   }
 
-  void _scrollToBottom() {
-    if (_scrollController.hasClients) {
+  void _scrollToBottom({bool animate = true, bool force = false}) {
+    if (!_scrollController.hasClients) return;
+    if (!force && !_stickToBottom) return;
+    final target = _scrollController.position.maxScrollExtent;
+    if (animate) {
       _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOutCubic,
+        target,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
       );
+    } else {
+      _scrollController.jumpTo(target);
     }
   }
 
   Future<void> _sendMessage(Conversation conversation, String text) async {
+    // Sending always re-pins to the bottom.
+    _stickToBottom = true;
     await ref.read(chatControllerProvider).sendMessage(
           conversation: conversation,
           content: text,
         );
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _scrollToBottom(force: true));
   }
 
   @override
   Widget build(BuildContext context) {
+    // Follow the assistant response as tokens stream in (unless the user
+    // scrolled up to read earlier content).
+    ref.listen<Message?>(streamingMessageProvider, (prev, next) {
+      if (next != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+      }
+    });
+
     final conversationAsync = ref.watch(currentConversationProvider);
     final messagesAsync = ref.watch(currentMessagesProvider);
     final artifactsAsync = ref.watch(currentArtifactsProvider);

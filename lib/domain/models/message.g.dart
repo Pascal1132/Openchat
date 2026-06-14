@@ -29,6 +29,8 @@ _$MessageImpl _$$MessageImplFromJson(Map<String, dynamic> json) =>
       toolCalls: json['toolCalls'] as Map<String, dynamic>?,
       toolResult: json['toolResult'] as Map<String, dynamic>?,
       tokenCountApprox: (json['tokenCountApprox'] as num?)?.toInt(),
+      modelId: json['modelId'] as String?,
+      modelName: json['modelName'] as String?,
     );
 
 Map<String, dynamic> _$$MessageImplToJson(_$MessageImpl instance) =>
@@ -44,6 +46,8 @@ Map<String, dynamic> _$$MessageImplToJson(_$MessageImpl instance) =>
       'toolCalls': instance.toolCalls,
       'toolResult': instance.toolResult,
       'tokenCountApprox': instance.tokenCountApprox,
+      'modelId': instance.modelId,
+      'modelName': instance.modelName,
     };
 
 const _$MessageRoleEnumMap = {

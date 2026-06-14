@@ -31,6 +31,10 @@ class Message with _$Message {
     Map<String, dynamic>? toolResult,
     /// Approximate token count for this message.
     int? tokenCountApprox,
+    /// Id of the model that generated this (assistant) message.
+    String? modelId,
+    /// Human-readable name of the model that generated this message.
+    String? modelName,
   }) = _Message;
 
   factory Message.fromJson(Map<String, dynamic> json) =>

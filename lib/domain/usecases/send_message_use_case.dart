@@ -65,9 +65,13 @@ class SendMessageUseCase {
       ),
     );
 
+    final modelId =
+        conversation.modelId ?? settings.defaultModelId ?? 'openai/gpt-4o';
+    final modelName = conversation.modelName ?? modelId;
+
     final requestMessages = _buildRequestMessages(history, userMessage);
     final request = ChatCompletionRequest(
-      model: conversation.modelId ?? settings.defaultModelId ?? 'openai/gpt-4o',
+      model: modelId,
       messages: requestMessages,
       temperature: settings.temperature,
       topP: settings.topP,
@@ -83,6 +87,8 @@ class SendMessageUseCase {
       content: '',
       isStreaming: true,
       createdAt: DateTime.now().toUtc(),
+      modelId: modelId,
+      modelName: modelName,
     );
     await _messageRepository.addMessage(assistantMessage);
 
