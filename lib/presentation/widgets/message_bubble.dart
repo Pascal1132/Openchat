@@ -12,6 +12,7 @@ class MessageBubble extends StatelessWidget {
     this.onRegenerate,
     this.onEdit,
     this.onCopy,
+    this.onOpenArtifacts,
     super.key,
   });
 
@@ -19,6 +20,7 @@ class MessageBubble extends StatelessWidget {
   final VoidCallback? onRegenerate;
   final VoidCallback? onEdit;
   final VoidCallback? onCopy;
+  final VoidCallback? onOpenArtifacts;
 
   bool get _isUser => message.role == MessageRole.user;
 
@@ -40,6 +42,13 @@ class MessageBubble extends StatelessWidget {
                 const SizedBox(height: 6),
                 _Content(message: message),
                 if (message.isStreaming) _StreamingCursor(),
+                if (message.hasArtifacts && onOpenArtifacts != null) ...[
+                  const SizedBox(height: 10),
+                  _ArtifactButton(
+                    count: message.artifactIds.length,
+                    onTap: onOpenArtifacts!,
+                  ),
+                ],
                 const SizedBox(height: 10),
                 _Actions(
                   isUser: _isUser,
@@ -327,6 +336,48 @@ class _Actions extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+class _ArtifactButton extends StatelessWidget {
+  const _ArtifactButton({required this.count, required this.onTap});
+
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = count > 1 ? '$count artifacts' : 'View artifact';
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceOverlay,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.primary),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.auto_awesome_mosaic,
+                size: 15, color: AppColors.primary),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: AppTypography.bodySmall.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Icon(Icons.arrow_forward,
+                size: 13, color: AppColors.primary),
+          ],
+        ),
+      ),
     );
   }
 }

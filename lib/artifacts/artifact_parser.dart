@@ -1,5 +1,3 @@
-import 'package:uuid/uuid.dart';
-
 import '../domain/models/artifact.dart';
 import 'artifact_types.dart';
 
@@ -12,8 +10,15 @@ class ArtifactParser {
   );
 
   /// Extracts artifacts from [text].
-  List<Artifact> parse(String text) {
+  ///
+  /// [idSeed] makes artifact identity stable across repeated parses of the
+  /// same (growing) text — essential during streaming, where the same block
+  /// is parsed on every token. Without it a fresh id would be minted each
+  /// time, producing many duplicates of the same artifact. When the model
+  /// supplies an explicit `id` attribute that always wins.
+  List<Artifact> parse(String text, {String idSeed = 'artifact'}) {
     final artifacts = <Artifact>[];
+    var index = 0;
     for (final match in _artifactPattern.allMatches(text)) {
       final rawAttributes = match.group(1) ?? '';
       final attrs = _parseAttributes(rawAttributes);
@@ -24,7 +29,9 @@ class ArtifactParser {
           ? attrs['title']!
           : 'Untitled';
       final language = attrs['language'] ?? type.defaultLanguage;
-      final id = attrs['id'] ?? const Uuid().v4();
+      final id = attrs['id']?.trim().isNotEmpty == true
+          ? attrs['id']!
+          : '${idSeed}_$index';
 
       artifacts.add(
         Artifact(
@@ -38,6 +45,7 @@ class ArtifactParser {
           updatedAt: DateTime.now().toUtc(),
         ),
       );
+      index++;
     }
     return artifacts;
   }

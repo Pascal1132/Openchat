@@ -108,13 +108,19 @@ class SendMessageUseCase {
       buffer.write(chunk);
       assistantMessage = assistantMessage.copyWith(content: buffer.toString());
       await _messageRepository.updateMessage(assistantMessage);
-      await _extractAndSaveArtifacts(buffer.toString(), conversation.id, artifacts);
+      await _extractAndSaveArtifacts(
+        buffer.toString(),
+        conversation.id,
+        artifacts,
+        assistantMessage.id,
+      );
       yield StreamingUpdate(message: assistantMessage, artifacts: artifacts);
     }
 
     final (displayContent, finalArtifacts) = await _finalizeArtifacts(
       buffer.toString(),
       conversation.id,
+      assistantMessage.id,
     );
     artifacts
       ..clear()
@@ -187,8 +193,9 @@ class SendMessageUseCase {
     String text,
     String conversationId,
     List<Artifact> artifacts,
+    String idSeed,
   ) async {
-    final parsed = _artifactParser.parse(text);
+    final parsed = _artifactParser.parse(text, idSeed: idSeed);
     for (final artifact in parsed) {
       final existing = artifacts.where((a) => a.id == artifact.id).firstOrNull;
       if (existing == null) {
@@ -198,7 +205,14 @@ class SendMessageUseCase {
         artifacts.add(saved);
       } else if (existing.content != artifact.content) {
         final index = artifacts.indexOf(existing);
-        final updated = existing.updateContent(artifact.content);
+        // Overwrite in place (same id) instead of versioning every token.
+        final updated = existing.copyWith(
+          content: artifact.content,
+          title: artifact.title,
+          type: artifact.type,
+          language: artifact.language,
+          updatedAt: DateTime.now().toUtc(),
+        );
         await _artifactRepository.updateArtifact(updated);
         artifacts[index] = updated;
       }
@@ -208,8 +222,9 @@ class SendMessageUseCase {
   Future<(String, List<Artifact>)> _finalizeArtifacts(
     String text,
     String conversationId,
+    String idSeed,
   ) async {
-    final parsed = _artifactParser.parse(text);
+    final parsed = _artifactParser.parse(text, idSeed: idSeed);
     final artifacts = <Artifact>[];
     for (final artifact in parsed) {
       final saved = await _artifactRepository.saveArtifact(

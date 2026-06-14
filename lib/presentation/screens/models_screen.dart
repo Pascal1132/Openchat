@@ -50,9 +50,10 @@ class _ModelsScreenState extends ConsumerState<ModelsScreen> {
   }
 
   Widget _buildAppBar(BuildContext context, String apiKey) {
+    final topInset = MediaQuery.viewPaddingOf(context).top;
     return Container(
-      height: 64,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      height: 64 + topInset,
+      padding: EdgeInsets.only(left: 16, right: 16, top: topInset),
       decoration: const BoxDecoration(
         color: AppColors.surface,
         border: Border(bottom: BorderSide(color: AppColors.border)),

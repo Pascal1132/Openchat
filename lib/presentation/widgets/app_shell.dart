@@ -65,7 +65,8 @@ class _Sidebar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       color: AppColors.surface,
-      child: Column(
+      child: SafeArea(
+        child: Column(
         children: [
           _buildHeader(context, ref),
           _buildSearch(context, ref),
@@ -82,6 +83,7 @@ class _Sidebar extends ConsumerWidget {
           ),
           _buildFooter(context, ref),
         ],
+        ),
       ),
     );
   }

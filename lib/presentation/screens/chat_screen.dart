@@ -209,6 +209,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   messagesAsync: messagesAsync,
                   streamingMessage: streamingMessage,
                   scrollController: _scrollController,
+                  onOpenArtifacts: showArtifacts
+                      ? () => _openArtifactsSheet(context, conversation.id)
+                      : null,
                 ),
               ),
               if (desktop && showArtifacts)
@@ -255,6 +258,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             modelName: model?.displayName,
           ),
         );
+    // The chat header/input read from conversationProvider(id), a separate
+    // FutureProvider — refresh it so the new model shows immediately.
+    ref.invalidate(conversationProvider(conversation.id));
   }
 
   void _openArtifactsSheet(BuildContext context, String conversationId) {
@@ -348,9 +354,12 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Push the bar below the device status bar / notch so buttons never
+    // overlap it on mobile.
+    final topInset = MediaQuery.viewPaddingOf(context).top;
     return Container(
-      height: 64,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      height: 64 + topInset,
+      padding: EdgeInsets.only(left: 14, right: 14, top: topInset),
       decoration: const BoxDecoration(
         color: AppColors.surface,
         border: Border(bottom: BorderSide(color: AppColors.border)),
@@ -441,11 +450,13 @@ class _MessageList extends ConsumerWidget {
     required this.messagesAsync,
     required this.streamingMessage,
     required this.scrollController,
+    this.onOpenArtifacts,
   });
 
   final AsyncValue<List<Message>> messagesAsync;
   final Message? streamingMessage;
   final ScrollController scrollController;
+  final VoidCallback? onOpenArtifacts;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -474,6 +485,7 @@ class _MessageList extends ConsumerWidget {
                   ? () => ref.read(chatControllerProvider).regenerate(message)
                   : null,
               onCopy: () => _copy(context, message.content),
+              onOpenArtifacts: onOpenArtifacts,
             );
           },
         );
